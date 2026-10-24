@@ -1,13 +1,20 @@
 """PawPal+ backend class stubs. Logic is intentionally not implemented yet."""
 
 from dataclasses import dataclass, field
+from enum import IntEnum
+
+
+class Priority(IntEnum):
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
 
 
 @dataclass
 class Task:
     title: str
     duration_minutes: int
-    priority: str = "medium"  # "low" | "medium" | "high"
+    priority: Priority = Priority.MEDIUM
     category: str = "general"  # walk, feeding, meds, enrichment, grooming...
     completed: bool = False
 

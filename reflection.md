@@ -20,8 +20,8 @@ An owner has pets, a pet has tasks, and a separate scheduler looks at everything
 
 **b. Design changes**
 
-- Did your design change during implementation?
-- If yes, describe at least one change and why you made it.
+- Did your design change during implementation? Yes
+- If yes, describe at least one change and why you made it. I changed Task.priority from a string to a Priority enum with LOW = 1, MEDIUM = 2 and HIGH = 3. Strings sort alphabetically, so "high" would be before "medium" and "low" would come last. With numbers behind the names, the scheduler can just sort by priority. A typo like "hgih" will not be accepted anymore, because the enum rejects any name it doesn't have.
 
 ---
 

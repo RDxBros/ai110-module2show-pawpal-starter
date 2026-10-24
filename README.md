@@ -48,6 +48,16 @@ pip install -r requirements.txt
 6. Connect your logic to the Streamlit UI in `app.py`.
 7. Refine UML so it matches what you actually built.
 
+## Implementation summary
+
+The backend lives in `pawpal_system.py` and is tested from the command line (`main.py`) before any UI work.
+
+- **Owner** keeps a list of pets and how many minutes the owner has today. `get_all_tasks()` collects every pet's tasks into one list.
+- **Pet** stores its details and its own list of **Task**s.
+- **Task** is one activity: title, duration, priority, frequency, an optional fixed time, and whether it's done.
+- **Scheduler** reads everything through `owner.get_all_tasks()`, so it plans across all pets at once. Fixed-time tasks go in first, the rest fill the gaps by priority, and anything that conflicts or doesn't fit is skipped with a reason.
+- **ScheduledItem** is the result: a task, its pet, a start time and the reason it was chosen.
+
 ## 🖥️ Sample Output
 
 Output from `python main.py`:

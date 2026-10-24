@@ -21,6 +21,7 @@ class Task:
     completed: bool = False
 
     def mark_complete(self) -> None:
+        """Mark this task as done."""
         self.completed = True
 
 
@@ -32,9 +33,11 @@ class Pet:
     tasks: list[Task] = field(default_factory=list)
 
     def add_task(self, task: Task) -> None:
+        """Add a task to this pet's list."""
         self.tasks.append(task)
 
     def remove_task(self, title: str) -> None:
+        """Remove every task with this title from the pet."""
         self.tasks = [t for t in self.tasks if t.title != title]
 
 
@@ -46,6 +49,7 @@ class Owner:
     pets: list[Pet] = field(default_factory=list)
 
     def add_pet(self, pet: Pet) -> None:
+        """Add a pet to this owner."""
         self.pets.append(pet)
 
     def get_all_tasks(self) -> list[tuple[Pet, Task]]:
@@ -61,14 +65,17 @@ class ScheduledItem:
     reason: str = ""
 
     def end_minute(self) -> int:
+        """Return the minute this item finishes."""
         return self.start_minute + self.task.duration_minutes
 
 
 def format_time(minute: int) -> str:
+    """Turn minutes since midnight into 'HH:MM'."""
     return f"{minute // 60:02d}:{minute % 60:02d}"
 
 
 def parse_time(text: str) -> int:
+    """Turn 'HH:MM' into minutes since midnight."""
     hours, minutes = text.split(":")
     return int(hours) * 60 + int(minutes)
 
@@ -78,6 +85,7 @@ DAY_END_MINUTE = 24 * 60
 
 class Scheduler:
     def __init__(self, owner: Owner, day_start_minute: int = 8 * 60):
+        """Set up a scheduler for one owner, starting the day at 08:00 by default."""
         self.owner = owner
         self.day_start_minute = day_start_minute
         self.skipped: list[tuple[Pet, Task, str]] = []
@@ -128,9 +136,11 @@ class Scheduler:
 
     @staticmethod
     def _overlaps(plan: list[ScheduledItem], start: int, end: int) -> bool:
+        """Return True if a time range overlaps anything already in the plan."""
         return any(start < i.end_minute() and i.start_minute < end for i in plan)
 
     def _first_free_slot(self, plan: list[ScheduledItem], duration: int) -> int | None:
+        """Find the earliest start time where a task of this length fits, or None."""
         start = self.day_start_minute
         for item in sorted(plan, key=lambda i: i.start_minute):
             if start + duration <= item.start_minute:
@@ -139,6 +149,7 @@ class Scheduler:
         return start if start + duration <= DAY_END_MINUTE else None
 
     def explain_plan(self, plan: list[ScheduledItem]) -> str:
+        """Return the plan as readable text, including skipped tasks."""
         lines = [f"Today's Schedule for {self.owner.name} ({self.owner.available_minutes} min available):"]
         for item in plan:
             lines.append(

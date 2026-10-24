@@ -44,12 +44,22 @@ An owner has pets, a pet has tasks, and a separate scheduler looks at everything
 **a. How you used AI**
 
 - How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
+
+I used AI to brainstorm the classes, draft the UML, write the class skeleton, and then fill in the scheduler. I also asked it to review the skeleton for missing relationships and bottlenecks.
+
 - What kinds of prompts or questions were most helpful?
+
+Asking it to review my own skeleton was the most useful. It pointed out that a task doesn't know which pet it belongs to, and that string priorities sort in the wrong order.
 
 **b. Judgment and verification**
 
 - Describe one moment where you did not accept an AI suggestion as-is.
+
+The AI listed several changes after reviewing my skeleton (priority enum, pairing tasks with pets, returning skipped tasks, recurrence, fixed times). I took them one at a time instead of all at once, starting with the priority enum. Its first `main.py` also didn't meet my requirements, because the tasks had no times of their own, so I had it add a per-task time field.
+
 - How did you evaluate or verify what the AI suggested?
+
+I ran `main.py` and read the schedule to check the order and times made sense. That also caught a bug right away, a broken newline in the code that stopped the import. I then wrote two small pytest tests and they pass.
 
 ---
 

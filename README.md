@@ -24,6 +24,12 @@ Your final app should:
 
 ## Getting started
 
+## Core user actions
+
+1. **Add a pet** — enter owner info and a pet (name, species) so tasks have somewhere to live.
+2. **Add a care task** — give a pet a task (walk, feeding, meds...) with duration and priority.
+3. **Generate and view today's plan** — build a daily schedule that fits the owner's available time, ordered by priority, with an explanation of each choice.
+
 ### Setup
 
 ```bash

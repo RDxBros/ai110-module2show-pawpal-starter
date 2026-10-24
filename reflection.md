@@ -4,8 +4,19 @@
 
 **a. Initial design**
 
-- Briefly describe your initial UML design.
+- Briefly describe your initial UML design. 
+
+An owner has pets, a pet has tasks, and a separate scheduler looks at everything and builds the day's plan. The idea was to keep the data (who and what) apart from the logic (when and why).
+
 - What classes did you include, and what responsibilities did you assign to each?
+
+1. Owner: holds the owner's name, how much time they have each day, and their preferences. It also keeps the list of pets.
+2. Pet: holds the pet's name and species, plus the tasks that pet needs.
+3. Task: one task, with a title, duration, priority and category, and whether it's done.
+4. Scheduler: it takes the owner's tasks, picks what fits in the available time, orders them by priority, and explains why.
+5. ScheduledItem: one task placed at a start time, with a short reason.
+
+
 
 **b. Design changes**
 

@@ -21,7 +21,7 @@ def test_add_task_increases_pet_task_count():
 
 from datetime import date, timedelta
 
-from pawpal_system import Owner, Scheduler, sort_by_time
+from pawpal_system import Owner, Priority, Scheduler, sort_by_time
 
 
 def make_owner():
@@ -137,3 +137,103 @@ def test_detect_conflicts_ignores_different_days():
     dog.add_task(Task("Walk", 30, time="08:00", due_date=date.today() + timedelta(days=1)))
 
     assert Scheduler(owner).detect_conflicts() == []
+
+
+def test_sort_by_time_is_chronological_not_alphabetical():
+    owner, dog, _ = make_owner()
+    dog.add_task(Task("Ten", 10, time="10:00"))
+    dog.add_task(Task("Nine", 10, time="9:00"))
+    dog.add_task(Task("Noon", 10, time="12:00"))
+
+    titles = [t.title for _, t in sort_by_time(owner.get_all_tasks())]
+
+    assert titles == ["Nine", "Ten", "Noon"]
+
+
+def test_sort_by_time_keeps_input_order_on_ties_and_handles_empty():
+    owner, dog, cat = make_owner()
+    assert sort_by_time([]) == []
+
+    dog.add_task(Task("First", 10, time="08:00"))
+    cat.add_task(Task("Second", 10, time="08:00"))
+
+    titles = [t.title for _, t in sort_by_time(owner.get_all_tasks())]
+
+    assert titles == ["First", "Second"]
+
+
+def test_scheduler_sort_by_time_accepts_filtered_pairs():
+    owner, dog, cat = make_owner()
+    dog.add_task(Task("Late", 10, time="15:00"))
+    dog.add_task(Task("Early", 10, time="06:00"))
+    cat.add_task(Task("Other", 10, time="01:00"))
+
+    scheduler = Scheduler(owner)
+    pairs = scheduler.sort_by_time(scheduler.filter_tasks(pet_name="Biscuit"))
+
+    assert [t.title for _, t in pairs] == ["Early", "Late"]
+
+
+def test_detect_conflicts_flags_duplicate_times():
+    owner, dog, cat = make_owner()
+    dog.add_task(Task("Walk", 30, time="08:00"))
+    cat.add_task(Task("Play", 30, time="08:00"))
+
+    warnings = Scheduler(owner).detect_conflicts()
+
+    assert len(warnings) == 1
+    assert "08:00" in warnings[0] and "different pets" in warnings[0]
+
+
+def test_detect_conflicts_same_pet_duplicate_time():
+    owner, dog, _ = make_owner()
+    dog.add_task(Task("Walk", 30, time="08:00"))
+    dog.add_task(Task("Brush", 10, time="08:00"))
+
+    warnings = Scheduler(owner).detect_conflicts()
+
+    assert len(warnings) == 1 and "same pet" in warnings[0]
+
+
+def test_detect_conflicts_ignores_completed_and_flexible_tasks():
+    owner, dog, _ = make_owner()
+    done = Task("Walk", 30, time="08:00")
+    dog.add_task(done)
+    dog.add_task(Task("Brush", 10, time="08:00"))
+    dog.add_task(Task("Flexible", 10))
+    done.mark_complete()
+
+    assert Scheduler(owner).detect_conflicts() == []
+
+
+def test_plan_skips_conflicting_fixed_task_with_reason():
+    owner, dog, cat = make_owner()
+    dog.add_task(Task("Walk", 30, time="08:00"))
+    cat.add_task(Task("Play", 30, time="08:00"))
+
+    scheduler = Scheduler(owner)
+    plan = scheduler.build_daily_plan()
+
+    assert len(plan) == 1
+    assert [why for _, _, why in scheduler.skipped] == ["conflicts with another task"]
+
+
+def test_plan_places_high_priority_flexible_first_and_skips_overflow():
+    owner, dog, _ = make_owner()
+    owner.available_minutes = 30
+    dog.add_task(Task("Low", 20, priority=Priority.LOW))
+    dog.add_task(Task("High", 20, priority=Priority.HIGH))
+
+    scheduler = Scheduler(owner)
+    plan = scheduler.build_daily_plan()
+
+    assert [i.task.title for i in plan] == ["High"]
+    assert [t.title for _, t, _ in scheduler.skipped] == ["Low"]
+
+
+def test_empty_owner_plan_is_empty():
+    owner = Owner(name="Nobody")
+    scheduler = Scheduler(owner)
+
+    assert scheduler.build_daily_plan() == []
+    assert "Nothing scheduled." in scheduler.explain_plan([])

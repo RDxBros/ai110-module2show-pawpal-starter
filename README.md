@@ -73,21 +73,38 @@ Today's Schedule for Jordan (60 min available):
 
 Tasks with a fixed time keep it, flexible tasks fill the gaps by priority, and anything that doesn't fit in the owner's time is skipped with a reason.
 
-## 🧪 Testing PawPal+
+## Testing PawPal+
+
+Run the full suite from the project root:
 
 ```bash
-# Run the full test suite:
-pytest
-
-# Run with coverage:
-pytest --cov
+python -m pytest
 ```
+
+**What the tests cover** (`tests/test_pawpal.py`, 21 tests):
+
+- **Sorting:** tasks come back in chronological order (`"9:00"` before `"10:00"`), flexible tasks go last, ties keep input order, and an empty list is fine.
+- **Recurrence:** completing a daily task adds a copy due tomorrow, a weekly task adds one due in 7 days, and a "once" task adds nothing. Completing twice never duplicates, and next-day copies stay out of today's plan.
+- **Conflict detection:** duplicate start times and partial overlaps are flagged (same pet and different pets). Back-to-back tasks, tasks on different days, completed tasks and flexible tasks are not.
+- **Planning and filtering:** fixed tasks keep their time, high priority is placed first, overflow and conflicting tasks are skipped with a reason, an empty owner gives an empty plan, and filtering by pet name (case-insensitive) and status works.
 
 Sample test output:
 
 ```
-# Paste your pytest output here
+============================= test session starts =============================
+platform win32 -- Python 3.13.15, pytest-9.1.1, pluggy-1.7.0
+rootdir: C:\Users\todee\Downloads\ai110-module2show-pawpal-starter
+plugins: anyio-4.15.1
+collected 21 items
+
+tests\test_pawpal.py .....................                               [100%]
+
+============================= 21 passed in 0.07s ==============================
 ```
+
+**Confidence Level: ★★★★☆ (4/5)**
+
+All 21 tests pass and they cover the core behaviors and the main edge cases. I'm holding back one star because a few cases are untested: invalid time strings such as `"9am"` crash `parse_time`, an empty `time=""` is treated differently by sorting and planning, and fixed tasks aren't checked against the end of the day.
 
 ## 📐 Smarter Scheduling
 

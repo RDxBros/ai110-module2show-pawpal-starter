@@ -91,14 +91,34 @@ Sample test output:
 
 ## 📐 Smarter Scheduling
 
-> Fill in once you've implemented scheduling logic.
-
 | Feature | Method(s) | Notes |
 |---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
+| Sorting | `Scheduler.sort_by_time()` (uses `sort_by_time()`) | By fixed `HH:MM` time; flexible tasks last |
+| Filtering | `Scheduler.filter_tasks()` (uses `Owner.filter_tasks()`) | By pet name and/or completion status |
+| Conflict detection | `Scheduler.detect_conflicts()` | Warns about overlapping fixed-time tasks |
+| Recurring tasks | `Task.mark_complete()`, `Task.next_occurrence()`, `Pet.complete_task()`, `Scheduler.mark_task_complete()` | Daily = +1 day, weekly = +7 days |
+
+### Sorting
+
+`Scheduler.sort_by_time(pairs=None)` orders `(pet, task)` pairs by their fixed time. It uses `sorted()` with a lambda key that returns a tuple, `(has no time, minutes since midnight)`. Timed tasks come first in clock order and flexible tasks go last. Times are converted with `parse_time()` instead of compared as text, so `"9:00"` correctly comes before `"10:00"`. Pass in a filtered list to sort only that, or leave it out to sort everything.
+
+### Filtering
+
+`Scheduler.filter_tasks(pet_name=None, completed=None)` narrows the owner's tasks by pet name (ignores case) and/or status. `completed=True` gives done tasks, `False` gives pending ones, and `None` doesn't filter on status. It's a thin wrapper over `Owner.filter_tasks()`. Filtering and sorting chain together, for example `scheduler.sort_by_time(scheduler.filter_tasks("Mochi", completed=False))`.
+
+### Conflict detection
+
+`Scheduler.detect_conflicts()` is a lightweight check that returns a list of warning strings instead of raising or changing anything. It looks at pending, fixed-time tasks on the same day, sorts them by start time, and checks each one only against the tasks that start before it ends. It catches real overlaps, not just identical start times, and works for the same pet or different pets. Back-to-back tasks are fine. Example:
+
+```
+Conflict (same pet): 'Nail trim' for Biscuit (14:00-14:15) overlaps 'Training' for Biscuit (starts 14:00)
+```
+
+`build_daily_plan()` also skips a fixed task that overlaps one already placed, and lists it under "Skipped" with the reason. The earlier task wins, even if the later one has a higher priority.
+
+### Recurring tasks
+
+Each `Task` has a `frequency` of `"once"`, `"daily"` or `"weekly"` and a `due_date`. `Task.mark_complete()` marks the task done and returns the next occurrence from `Task.next_occurrence()`, due `today + timedelta(days=1)` for daily or `today + timedelta(days=7)` for weekly. It returns `None` for `"once"` tasks, and for a task that was already complete, so it never duplicates. `Pet.complete_task()` (also reachable as `Scheduler.mark_task_complete(pet, task)`) adds the new task to the pet. Because the next copy is based on today, finishing a task late doesn't leave it overdue. The scheduler only plans tasks whose `due_date` is today or earlier.
 
 ## 📸 Demo Walkthrough
 

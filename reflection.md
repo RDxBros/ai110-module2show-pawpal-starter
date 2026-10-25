@@ -30,12 +30,24 @@ An owner has pets, a pet has tasks, and a separate scheduler looks at everything
 **a. Constraints and priorities**
 
 - What constraints does your scheduler consider (for example: time, priority, preferences)?
+
+It looks at four things: how many minutes the owner has today, each task's priority, fixed start times, and whether a task is due yet. Preferences are stored on the owner, but the scheduler doesn't use them yet.
+
 - How did you decide which constraints mattered most?
+
+I ordered them by what would hurt a pet most if it went wrong. A fixed time like meds at 12:00 is a promise, so those get placed first. After that, the owner's time limit is a hard stop, and priority decides who gets the time that is left. High priority goes first, and shorter tasks win ties so more things fit.
 
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
+
+Fixed-time tasks are placed in time order, not priority order. If a low priority task is fixed at 08:00 and a high priority one is fixed at 08:15 and they overlap, the earlier one wins and the later one is skipped, even though it matters more. The scheduler also only warns about the clash. It doesn't try to move anything.
+
+I did go with real overlap checking instead of only matching exact start times, so a 30 minute walk at 08:00 does clash with a task at 08:20. Back-to-back tasks (one ends at 08:30, the next starts at 08:30) are not a clash.
+
 - Why is that tradeoff reasonable for this scenario?
+
+The owner picked those times on purpose, so quietly moving them could be worse than a skipped task. Warning them and letting them decide keeps them in control, and it keeps the code simple enough to read and test. For a handful of pets and tasks a day, that is enough. The cost is that the owner sometimes has to fix the clash by hand. If I had more time, I would let priority break the tie.
 
 ---
 

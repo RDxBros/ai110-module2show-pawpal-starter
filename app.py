@@ -1,6 +1,6 @@
 import streamlit as st
 
-from pawpal_system import Owner, Pet, Priority, Scheduler, Task, parse_time, sort_by_time
+from pawpal_system import Owner, Pet, Priority, Scheduler, Task, format_time, parse_time
 
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 
@@ -111,32 +111,46 @@ else:
     st.info("Add a pet first, then you can give it tasks.")
 
 if owner.get_all_tasks():
+    scheduler = Scheduler(owner)
     st.write("Current tasks:")
-    for warning in Scheduler(owner).detect_conflicts():
-        st.warning(warning)
+
+    conflicts = scheduler.detect_conflicts()
+    if conflicts:
+        st.warning(
+            f"**{len(conflicts)} scheduling conflict{'s' if len(conflicts) > 1 else ''} found.** "
+            "Two fixed-time tasks overlap, so only one of each pair can happen at its set time. "
+            "Change one task's time (or remove it) to fix this:\n\n"
+            + "\n".join(f"- {c}" for c in conflicts)
+        )
+    else:
+        st.success("No time conflicts. Your fixed-time tasks all fit.")
 
     f1, f2 = st.columns(2)
     pet_filter = f1.selectbox("Filter by pet", ["All"] + [p.name for p in owner.pets])
     status_filter = f2.selectbox("Filter by status", ["All", "Pending", "Completed"])
-    shown = owner.filter_tasks(
+    shown = scheduler.filter_tasks(
         pet_name=None if pet_filter == "All" else pet_filter,
         completed={"All": None, "Pending": False, "Completed": True}[status_filter],
     )
-    st.table(
-        [
-            {
-                "pet": pet.name,
-                "task": task.title,
-                "minutes": task.duration_minutes,
-                "priority": task.priority.name.lower(),
-                "time": task.time or "flexible",
-                "repeats": task.frequency,
-                "due": str(task.due_date),
-                "done": task.completed,
-            }
-            for pet, task in sort_by_time(shown)
-        ]
-    )
+    if shown:
+        st.caption("Sorted by time; flexible tasks are listed last.")
+        st.table(
+            [
+                {
+                    "pet": pet.name,
+                    "task": task.title,
+                    "minutes": task.duration_minutes,
+                    "priority": task.priority.name.lower(),
+                    "time": task.time or "flexible",
+                    "repeats": task.frequency,
+                    "due": str(task.due_date),
+                    "done": task.completed,
+                }
+                for pet, task in scheduler.sort_by_time(shown)
+            ]
+        )
+    else:
+        st.info("No tasks match these filters.")
 
     pending = owner.filter_tasks(completed=False)
     if pending:
@@ -160,4 +174,32 @@ if st.button("Generate schedule"):
     else:
         scheduler = Scheduler(owner)
         plan = scheduler.build_daily_plan()
-        st.code(scheduler.explain_plan(plan), language=None)
+        if plan:
+            used = sum(item.task.duration_minutes for item in plan)
+            st.success(
+                f"Planned {len(plan)} task{'s' if len(plan) > 1 else ''}: "
+                f"{used} of {owner.available_minutes} minutes used."
+            )
+            st.table(
+                [
+                    {
+                        "start": format_time(item.start_minute),
+                        "end": format_time(item.end_minute()),
+                        "pet": item.pet.name,
+                        "task": item.task.title,
+                        "why": item.reason,
+                    }
+                    for item in plan
+                ]
+            )
+        else:
+            st.info("Nothing to schedule today.")
+        if scheduler.skipped:
+            st.warning(
+                "**Couldn't fit these tasks:**\n\n"
+                + "\n".join(
+                    f"- {task.title} for {pet.name} ({task.duration_minutes} min): {why}"
+                    for pet, task, why in scheduler.skipped
+                )
+                + "\n\nTry freeing up time, shortening a task, or moving a fixed time."
+            )

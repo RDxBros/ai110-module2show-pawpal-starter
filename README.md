@@ -48,6 +48,17 @@ pip install -r requirements.txt
 6. Connect your logic to the Streamlit UI in `app.py`.
 7. Refine UML so it matches what you actually built.
 
+## ✨ Features
+
+- **Sorting by time:** tasks are ordered by their fixed `HH:MM` start. The `HH:MM` strings are converted to minutes first, so `"9:00"` comes before `"10:00"`. Flexible tasks (no fixed time) go last, and ties keep their original order.
+- **Filtering:** narrow tasks by pet name (case-insensitive), by status (pending or completed), or both. Filtering and sorting chain together.
+- **Conflict warnings:** fixed-time tasks that overlap are flagged, even when they only partly overlap and not just when they start together. It works for the same pet or different pets. Back-to-back tasks are fine, and tasks on different days, completed tasks and flexible tasks are ignored. Warnings are plain text and nothing is changed or raised.
+- **Daily and weekly recurrence:** completing a daily task creates the next copy due tomorrow, and a weekly task creates one due in 7 days. "Once" tasks create nothing. Completing a task twice never makes a duplicate, and next-day copies stay out of today's plan.
+- **Priority-based planning:** fixed-time tasks are placed first at their set time. The rest are sorted highest priority first (shorter tasks first on ties) and placed in the earliest free gap that fits.
+- **Time budget:** the plan stops at the owner's available minutes. Tasks that don't fit, or that overlap an already-placed fixed task, are skipped and listed with the reason.
+- **Explained schedule:** every planned task shows why it was chosen, such as `fixed at 09:00; medium priority`.
+- **Input checks in the UI:** pet names must be unique and non-empty, task titles can't be blank, and fixed times must look like `08:30`.
+
 ## Implementation summary
 
 The backend lives in `pawpal_system.py` and is tested from the command line (`main.py`) before any UI work.
@@ -137,14 +148,67 @@ Conflict (same pet): 'Nail trim' for Biscuit (14:00-14:15) overlaps 'Training' f
 
 Each `Task` has a `frequency` of `"once"`, `"daily"` or `"weekly"` and a `due_date`. `Task.mark_complete()` marks the task done and returns the next occurrence from `Task.next_occurrence()`, due `today + timedelta(days=1)` for daily or `today + timedelta(days=7)` for weekly. It returns `None` for `"once"` tasks, and for a task that was already complete, so it never duplicates. `Pet.complete_task()` (also reachable as `Scheduler.mark_task_complete(pet, task)`) adds the new task to the pet. Because the next copy is based on today, finishing a task late doesn't leave it overdue. The scheduler only plans tasks whose `due_date` is today or earlier.
 
-## 📸 Demo Walkthrough
+## Demo Walkthrough
 
-Describe your app in numbered steps so a reader can follow along without watching a video:
+Start the app with `streamlit run app.py`.
 
-1. <!-- Describe this step -->
-2. <!-- Describe this step -->
-3. <!-- Describe this step -->
-4. <!-- Describe this step -->
-5. <!-- Add more steps as needed -->
+### What you can do in the UI
 
-**Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->
+- **Owner:** set your name and how many minutes you have today.
+- **Add a pet:** enter a name and species. Duplicate or empty names are rejected.
+- **Add a task:** pick a pet, then set a title, duration, priority, an optional fixed time (`HH:MM`) and how often it repeats (once, daily or weekly).
+- **Review tasks:** a table shows every task sorted by time, and you can filter it by pet and by status. A conflict banner sits above the table.
+- **Complete a task:** pick a pending task and mark it done. A daily or weekly task tells you when its next copy is due.
+- **Generate schedule:** build today's plan as a table of start and end times with the reason for each task, plus a warning listing anything that didn't fit.
+
+### Example workflow
+
+1. Set the owner to "Jordan" with 60 minutes available.
+2. Add two pets: Biscuit (dog) and Mochi (cat).
+3. Add "Morning walk" for Biscuit at `08:00` (30 min, high, daily), and "Give meds" for Mochi at `12:00` (5 min, high, daily).
+4. Add "Nail trim" for Biscuit at `14:00` and "Training" at `14:00`. A warning appears right away saying the two tasks overlap.
+5. Use the filters to look at only Mochi's pending tasks. The table stays sorted by time.
+6. Mark "Morning walk" complete. A new "Morning walk" is added, due tomorrow.
+7. Click **Generate schedule** to see today's plan. The fixed tasks keep their times, flexible tasks fill the gaps, and the clashing task is listed as skipped.
+
+### Scheduler behaviors on show
+
+- **Sorting:** the task table and the plan are in clock order, with flexible tasks last.
+- **Conflict warnings:** overlaps are flagged when you add the task, and the schedule skips the later one with the reason "conflicts with another task".
+- **Recurrence:** completing a daily or weekly task creates the next copy, and it doesn't appear in today's plan.
+- **Time budget:** tasks that don't fit in your available minutes are skipped with "not enough time left".
+
+### Sample CLI output
+
+`python main.py` prints a longer demo. This is an excerpt of the sorted list, the conflict check and the final schedule:
+
+```
+Sorted by time:
+     08:00  Morning walk  Biscuit  done  due 2026-10-24
+     08:00  Morning walk  Biscuit  pending  due 2026-10-25
+     09:00  Laser play    Mochi    pending  due 2026-10-24
+     09:05  Vet call      Biscuit  pending  due 2026-10-24
+     12:00  Give meds     Mochi    pending  due 2026-10-24
+     14:00  Nail trim     Biscuit  pending  due 2026-10-24
+     14:00  Training      Biscuit  pending  due 2026-10-24
+     18:30  Evening walk  Biscuit  pending  due 2026-10-24
+     18:30  Litter clean  Mochi    pending  due 2026-10-24
+  flexible  Brush coat    Biscuit  pending  due 2026-10-24
+  flexible  Feeding       Mochi    pending  due 2026-10-24
+
+Conflicts:
+  Conflict (different pets): 'Laser play' for Mochi (09:00-09:15) overlaps 'Vet call' for Biscuit (starts 09:05)
+  Conflict (same pet): 'Nail trim' for Biscuit (14:00-14:15) overlaps 'Training' for Biscuit (starts 14:00)
+  Conflict (different pets): 'Evening walk' for Biscuit (18:30-19:00) overlaps 'Litter clean' for Mochi (starts 18:30)
+
+Today's Schedule for Jordan (60 min available):
+  08:00 - Feeding for Mochi (10 min) [high priority; 10 min fits in the 15 min left]
+  09:00 - Laser play for Mochi (15 min) [fixed at 09:00; medium priority]
+  12:00 - Give meds for Mochi (5 min) [fixed at 12:00; high priority]
+  14:00 - Nail trim for Biscuit (15 min) [fixed at 14:00; medium priority]
+  18:30 - Litter clean for Mochi (10 min) [fixed at 18:30; low priority]
+  Skipped: Vet call for Biscuit (10 min) - conflicts with another task
+  Skipped: Training for Biscuit (20 min) - conflicts with another task
+  Skipped: Evening walk for Biscuit (30 min) - not enough time left
+  Skipped: Brush coat for Biscuit (20 min) - not enough time left
+```

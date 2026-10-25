@@ -73,6 +73,24 @@ The AI listed several changes after reviewing my skeleton (priority enum, pairin
 
 I ran `main.py` and read the schedule to check the order and times made sense. That also caught a bug right away, a broken newline in the code that stopped the import. I then wrote two small pytest tests and they pass.
 
+**c. AI strategy**
+
+- Which AI coding assistant features were most effective for building your scheduler?
+
+Three things worked best. First, reading my existing code before answering: asking it to review `pawpal_system.py` produced a list of behaviors and edge cases to test, instead of generic advice. Second, running commands itself. It ran pytest and `main.py` and showed me the real output, so I could put that output in the README without retyping anything. Third, it could drive the Streamlit app headlessly to check that the page loaded and the conflict warning appeared, which caught errors before I opened a browser.
+
+- Give one example of an AI suggestion you rejected or modified to keep your system design clean.
+
+While reviewing the scheduler, the AI called `next_occurrence` a bug because it builds the next date from `date.today()` instead of the task's old due date. I had already decided on that behavior and had a test for it, `test_late_completion_recurs_from_today_not_old_due_date`. A daily walk finished three days late should come back tomorrow, not sit overdue in the past. I kept my design and the test, and the AI dropped the claim. The same thing happened with the conflict warnings. The AI suggested more structure, such as having `detect_conflicts()` return objects so the UI could offer fixes, but that would have changed the backend and its tests. I kept plain warning strings and put the helpful wording in the UI.
+
+- How did using separate chat sessions for different phases help you stay organized?
+
+My commits follow the phases: blueprint and UML, class skeleton, core scheduling, connecting the UI, sorting/filtering/conflicts, then tests and docs. Keeping each phase in its own session meant the AI worked from the code as it was, not from an old plan in a long conversation. The cost was that a new session didn't remember earlier decisions, such as recurrence being based on today, so I had to restate them. The tests turned out to be the best record of those decisions.
+
+- Summarize what you learned about being the "lead architect" when collaborating with powerful AI tools.
+
+The AI is fast, so the risk is that it makes lots of changes and I stop checking them. As lead architect my job was to decide what the system should do, and to check each claim against the code and the tests. I took suggestions one at a time. I rejected the ones that changed design decisions I'd already made. The AI could write code and tests quickly, but only I knew what a good schedule looks like for a pet owner. The diagram, README and reflection also went out of date as the code grew, so keeping them in sync is part of the architect's job too.
+
 ---
 
 ## 4. Testing and Verification
@@ -80,12 +98,22 @@ I ran `main.py` and read the schedule to check the order and times made sense. T
 **a. What you tested**
 
 - What behaviors did you test?
+
+There are 21 pytest tests. They cover sorting (`"9:00"` before `"10:00"`, flexible tasks last, ties keep their order), recurrence (daily +1 day, weekly +7 days, "once" creates nothing, completing twice doesn't duplicate), conflict detection (duplicate times, partial overlaps, same and different pets, and no warning for back-to-back, different-day, completed or flexible tasks), filtering, and plan building (priority order, skipped tasks with reasons, an empty plan).
+
 - Why were these tests important?
+
+These are the behaviors a pet owner relies on. A missed conflict means two tasks at the same time, and a wrong sort order makes the schedule confusing. A duplicate recurring task would clutter every day after it.
 
 **b. Confidence**
 
 - How confident are you that your scheduler works correctly?
+
+4 out of 5. All 21 tests pass and they cover the core behaviors and the main edge cases.
+
 - What edge cases would you test next if you had more time?
+
+Invalid time strings such as `"9am"` currently crash `parse_time` in the backend. An empty `time=""` is sorted as midnight but planned as flexible. Fixed tasks aren't checked against the start or end of the day, so a 23:30 task of 60 minutes is accepted. I would also test removing a task by title when a completed original and its recurring copy share that title.
 
 ---
 
@@ -93,12 +121,12 @@ I ran `main.py` and read the schedule to check the order and times made sense. T
 
 **a. What went well**
 
-- What part of this project are you most satisfied with?
+I'm most satisfied with how the scheduler stays understandable. The data classes, the sorting and conflict functions, and the planner are separate, so each one can be tested alone, and the Streamlit UI only calls `Scheduler` methods. Conflict detection also checks real overlaps, not just matching start times.
 
 **b. What you would improve**
 
-- If you had another iteration, what would you improve or redesign?
+I would make `detect_conflicts()` return structured data (the two tasks and their times) so the UI could suggest a fix, like moving a task to the next free slot. I would also let priority break ties between overlapping fixed tasks, and validate time strings in the backend, not only in the UI.
 
 **c. Key takeaway**
 
-- What is one important thing you learned about designing systems or working with AI on this project?
+Design decisions have to be written down where they can be checked, and tests are the best place. When the AI questioned my recurrence rule, the test showed it was deliberate. Working with AI went best when I decided what the system should do and used the AI to build and check it.

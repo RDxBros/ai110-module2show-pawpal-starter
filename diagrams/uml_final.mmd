@@ -1,0 +1,86 @@
+classDiagram
+    class Priority {
+        <<enumeration>>
+        LOW = 1
+        MEDIUM = 2
+        HIGH = 3
+    }
+
+    class Task {
+        +str title
+        +int duration_minutes
+        +Priority priority
+        +str category
+        +str frequency  "once | daily | weekly"
+        +str time  "HH:MM or None"
+        +bool completed
+        +date due_date
+        +start_minute int
+        +end_minute int
+        +mark_complete() Task|None
+        +next_occurrence() Task|None
+    }
+
+    class Pet {
+        +str name
+        +str species
+        +int age
+        +list~Task~ tasks
+        +add_task(task) None
+        +remove_task(title) None
+        +complete_task(task) Task|None
+    }
+
+    class Owner {
+        +str name
+        +int available_minutes
+        +dict preferences
+        +list~Pet~ pets
+        +add_pet(pet) None
+        +get_all_tasks() list~Pet_Task~
+        +filter_tasks(pet_name, completed) list~Pet_Task~
+    }
+
+    class ScheduledItem {
+        +Task task
+        +Pet pet
+        +int start_minute
+        +str reason
+        +end_minute() int
+    }
+
+    class Scheduler {
+        +Owner owner
+        +int day_start_minute
+        +date day
+        +list skipped
+        +build_daily_plan() list~ScheduledItem~
+        +mark_task_complete(pet, task) Task|None
+        +sort_by_time(pairs) list~Pet_Task~
+        +filter_tasks(pet_name, completed) list~Pet_Task~
+        +detect_conflicts() list~str~
+        +explain_plan(plan) str
+        -_overlaps(plan, start, end) bool
+        -_first_free_slot(plan, duration) int
+        -_conflict_message(a, b) str
+    }
+
+    class helpers {
+        <<module functions>>
+        sort_by_time(pairs)
+        parse_time(text) int
+        format_time(minute) str
+    }
+
+    Owner "1" --> "*" Pet : has
+    Pet "1" --> "*" Task : needs
+    Task --> Priority
+    Task ..> Task : next_occurrence creates
+    Scheduler --> Owner : plans for
+    Scheduler ..> ScheduledItem : produces
+    Scheduler ..> Owner : filter_tasks delegates
+    Scheduler ..> Pet : mark_task_complete delegates
+    Scheduler ..> helpers : sort, parse, format
+    Pet ..> Task : complete_task calls mark_complete
+    ScheduledItem --> Task
+    ScheduledItem --> Pet
